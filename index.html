@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prompt Refinement Engine</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+    }
+    .neon {
+      color: #4df2ff;
+    }
+    .bg-neon {
+      background: #4df2ff;
+    }
+  </style>
+</head>
+
+<body class="bg-black text-white min-h-screen flex flex-col items-center p-4">
+
+  <div class="glass w-full max-w-2xl p-6 mt-4 space-y-6">
+
+    <h1 class="text-3xl font-bold text-center neon">Prompt Refinement Engine</h1>
+
+    <!-- STEP 1: RAW IDEA INPUT -->
+    <div id="step1">
+      <textarea id="rawIdea"
+        placeholder="Type your raw idea here..."
+        class="w-full p-4 rounded-lg bg-black/40 border border-white/10 focus:border-neon focus:outline-none h-40"></textarea>
+
+      <button id="analyzeBtn"
+        class="w-full mt-4 py-3 rounded-lg bg-neon text-black text-lg font-semibold active:scale-95">
+        Analyze
+      </button>
+    </div>
+
+    <!-- STEP 2: QUESTIONS -->
+    <div id="step2" class="hidden space-y-4">
+      <h2 class="text-xl font-semibold neon">Refinement Questions</h2>
+      <div id="questionsContainer" class="space-y-4"></div>
+
+      <button id="generatePromptBtn"
+        class="w-full mt-4 py-3 rounded-lg bg-neon text-black text-lg font-semibold active:scale-95">
+        Generate Optimized Prompt
+      </button>
+    </div>
+
+    <!-- STEP 3: FINAL PROMPT -->
+    <div id="step3" class="hidden space-y-4">
+      <h2 class="text-xl font-semibold neon">Your Optimized Prompt</h2>
+
+      <textarea id="finalPrompt"
+        readonly
+        class="w-full p-4 rounded-lg bg-black/40 border border-white/10 h-60"></textarea>
+
+      <button id="copyBtn"
+        class="w-full py-3 rounded-lg bg-neon text-black text-lg font-semibold active:scale-95">
+        Copy
+      </button>
+
+      <button id="newBtn"
+        class="w-full py-3 rounded-lg bg-white/20 border border-white/10 rounded-lg text-lg active:scale-95">
+        New
+      </button>
+    </div>
+
+    <p id="status" class="text-center text-white/60 text-sm"></p>
+
+  </div>
+
+
+<script>
+/* ---------------------------------------------- */
+/* API URL → Your Worker Proxy                    */
+/* ---------------------------------------------- */
+const API_URL = "https://gemini-proxy.sokane769.workers.dev";
+
+/* ---------------------------------------------- */
+/* Elements                                        */
+/* ---------------------------------------------- */
+const step1 = document.getElementById("step1");
+const step2 = document.getElementById("step2");
+const step3 = document.getElementById("step3");
+
+const rawIdeaEl = document.getElementById("rawIdea");
+const questionsContainer = document.getElementById("questionsContainer");
+const finalPromptEl = document.getElementById("finalPrompt");
+const statusEl = document.getElementById("status");
+
+/* ---------------------------------------------- */
+/* Gemini API Call (via your Worker)               */
+/* ---------------------------------------------- */
+async function callGemini(prompt) {
+  const payload = {
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: prompt }]
+      }
+    ]
+  };
+
+  let attempts = 0;
+
+  while (attempts < 3) {
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error("Network error");
+
+      const data = await response.json();
+
+      return (
+        data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+        ""
+      );
+
+    } catch (err) {
+      attempts++;
+      if (attempts >= 3) return null;
+    }
+  }
+}
+
+/* ---------------------------------------------- */
+/* Step 1 → Generate Refinement Questions          */
+/* ---------------------------------------------- */
+document.getElementById("analyzeBtn").onclick = async () => {
+  const idea = rawIdeaEl.value.trim();
+  if (!idea) return;
+
+  statusEl.textContent = "Analyzing idea…";
+
+  const questionPrompt = `
+You are an expert prompt engineer.
+Given this raw idea:
+
+"${idea}"
+
+Generate exactly 6 deep, vivid, non-generic refinement questions.
+Each question must explore a DIFFERENT dimension:
+- emotion
+- structure
+- creativity
+- audience
+- constraints
+- technical details
+
+Format: numbered list (1–6).
+  `;
+
+  const result = await callGemini(questionPrompt);
+
+  if (!result) {
+    statusEl.textContent = "AI busy — try again in 10 seconds.";
+    return;
+  }
+
+  statusEl.textContent = "";
+  step1.classList.add("hidden");
+  step2.classList.remove("hidden");
+
+  const qs = result.split(/\d+\./).filter(x => x.trim() !== "");
+
+  questionsContainer.innerHTML = "";
+
+  qs.forEach((q, i) => {
+    const div = document.createElement("div");
+    div.innerHTML = `
+      <p class="text-white/90 font-semibold mb-1">${i + 1}. ${q.trim()}</p>
+      <input id="answer${i}"
+        class="w-full p-3 rounded-lg bg-black/40 border border-white/10 focus:border-neon"
+        placeholder="Your answer...">
+    `;
+    questionsContainer.appendChild(div);
+  });
+};
+
+/* ---------------------------------------------- */
+/* Step 2 → Generate the Final Optimized Prompt    */
+/* ---------------------------------------------- */
+document.getElementById("generatePromptBtn").onclick = async () => {
+  statusEl.textContent = "Generating optimized prompt…";
+
+  const idea = rawIdeaEl.value.trim();
+  const answers = [];
+
+  for (let i = 0; i < 4; i++) {
+    answers.push(document.getElementById(`answer${i}`).value.trim());
+  }
+
+  const finalPromptInput = `
+You are an elite prompt engineer.
+Create ONE perfect optimized prompt for another AI.
+
+STRUCTURE REQUIRED:
+A. System Role
+B. Task Definition (preserve exactly: "${idea}")
+C. Context Integration:
+${answers.map((a, i) => `- Answer ${i + 1}: ${a}`).join("\n")}
+D. Reasoning Instructions (internal chain-of-thought NOT revealed)
+E. Output Format Instructions
+F. Optional Few-Shot (only if beneficial)
+
+Return only the final optimized prompt.
+  `;
+
+  const result = await callGemini(finalPromptInput);
+
+  if (!result) {
+    statusEl.textContent = "AI busy — try again in 10 seconds.";
+    return;
+  }
+
+  finalPromptEl.value = result;
+
+  step2.classList.add("hidden");
+  step3.classList.remove("hidden");
+  statusEl.textContent = "";
+};
+
+/* ---------------------------------------------- */
+/* Copy + New Buttons                              */
+/* ---------------------------------------------- */
+document.getElementById("copyBtn").onclick = () => {
+  navigator.clipboard.writeText(finalPromptEl.value);
+  statusEl.textContent = "Copied!";
+  setTimeout(() => { statusEl.textContent = ""; }, 1200);
+};
+
+document.getElementById("newBtn").onclick = () => location.reload();
+
+</script>
+
+</body>
+</html>
