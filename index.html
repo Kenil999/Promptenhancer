@@ -1,1 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Refinement App</title>
 
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-black text-white min-h-screen flex flex-col items-center p-4">
+
+  <div class="glass w-full max-w-2xl p-6 mt-4 space-y-6">
+
+    <h1 class="text-3xl font-bold text-center neon">Prompt Refinement Engine</h1>
+
+    <!-- STEP 1: RAW IDEA INPUT -->
+    <div id="step1">
+      <textarea id="rawIdea"
+        placeholder="Type your raw idea here..."
+        class="w-full p-4 rounded-lg bg-black/40 border border-white/10 focus:border-neon focus:outline-none h-40"></textarea>
+
+      <button id="analyzeBtn"
+        class="w-full mt-4 py-3 rounded-lg bg-neon text-black text-lg font-semibold active:scale-95">
+        Analyze
+      </button>
+    </div>
+
+    <!-- STEP 2: REFINEMENT QUESTIONS -->
+    <div id="step2" class="hidden space-y-4">
+      <h2 class="text-xl font-semibold neon">Refinement Questions</h2>
+      <div id="questionsContainer" class="space-y-4"></div>
+
+      <button id="generatePromptBtn"
+        class="w-full mt-4 py-3 rounded-lg bg-neon text-black text-lg font-semibold active:scale-95">
+        Generate Optimized Prompt
+      </button>
+    </div>
+
+    <!-- STEP 3: FINAL PROMPT OUTPUT -->
+    <div id="step3" class="hidden space-y-4">
+      <h2 class="text-xl font-semibold neon">Your Optimized Prompt</h2>
+
+      <textarea id="finalPrompt"
+        readonly
+        class="w-full p-4 rounded-lg bg-black/40 border border-white/10 h-60"></textarea>
+
+      <button id="copyBtn"
+        class="w-full py-3 rounded-lg bg-neon text-black text-lg font-semibold active:scale-95">
+        Copy
+      </button>
+
+      <button id="newBtn"
+        class="w-full py-3 rounded-lg bg-white/20 border border-white/10 rounded-lg text-lg active:scale-95">
+        New
+      </button>
+    </div>
+
+    <!-- Status Area -->
+    <p id="status" class="text-center text-white/60 text-sm"></p>
+
+  </div>
+
+  <!-- JS -->
+  <script src="script.js"></script>
+
+</body>
+</html>
